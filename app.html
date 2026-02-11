@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="書類管理">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <title>病院書類管理システム（オフライン版）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .role-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .role-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .role-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .calendar-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .calendar-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        .calendar-day {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            min-height: 100px;
+            padding: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .calendar-day.other-month {
+            background: #f7fafc;
+            opacity: 0.5;
+        }
+
+        .calendar-day.today {
+            border-color: #667eea;
+            background: #ebf4ff;
+        }
+
+        .calendar-day.past-day {
+            background: #fff5f5;
+            border-color: #fc8181;
+        }
+
+        .calendar-day.past-day .task-count {
+            background: #e53e3e;
+        }
+
+        .day-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .day-tasks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .task-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .task-emergency {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .task-discharge-summary {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .task-referral {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .task-dpc {
+            background: #e9d8fd;
+            color: #553c9a;
+        }
+
+        .task-dpc-confirm {
+            background: #d6bcfa;
+            color: #44337a;
+        }
+
+        .task-count {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #fc8181;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            color: #2d3748;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #e2e8f0;
+            color: #4a5568;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: #cbd5e0;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .task-item {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .task-item:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .task-item.overdue {
+            border-color: #fc8181;
+            background: #fff5f5;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .task-patient {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .task-type {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .task-deadline {
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .task-deadline.urgent {
+            color: #c53030;
+            font-weight: bold;
+        }
+
+        .status-toggle {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .status-completed {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-pending {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-in-progress {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .status-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        .add-patient-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-patient-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .task-info {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .calendar-grid {
+                gap: 5px;
+            }
+            
+            .calendar-day {
+                min-height: 80px;
+                padding: 5px;
+            }
+            
+            .task-badge {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .calendar-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .calendar-day-header {
+                display: none;
+            }
+            
+            .calendar-day {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                min-height: 60px;
+            }
+            
+            .day-tasks {
+                flex-direction: row;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 病院書類管理システム</h1>
+            <div class="role-selector" id="roleSelector">
+                <button class="role-btn active" data-role="doctor">医師</button>
+                <button class="role-btn" data-role="medical-assistant">メディカルアシスタント</button>
+                <button class="role-btn" data-role="nursing-director">看護部長</button>
+                <button class="role-btn" data-role="medical-affairs">医事課</button>
+                <button class="role-btn" data-role="medical-information">診療情報士</button>
+            </div>
+        </div>
+
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <h2 class="calendar-title" id="calendarTitle">2025年2月9日 〜 3月1日</h2>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid"></div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color task-emergency"></div>
+                    <span>緊急テンプレート（24時間以内）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color task-dpc"></div>
+                    <span>DPC入力（入院後7日以内）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color task-referral"></div>
+                    <span>診断書・診療情報提供書（退院日朝まで）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color task-discharge-summary"></div>
+                    <span>退院サマリ（退院後3日以内）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color task-dpc-confirm"></div>
+                    <span>DPC再確認（退院前）</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="add-patient-btn" id="addPatientBtn">+</button>
+
+    <!-- 日付詳細モーダル -->
+    <div class="modal" id="dayDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">2025年2月11日の書類</h3>
+                <button class="close-btn" id="closeDayDetail">×</button>
+            </div>
+            <div class="task-list" id="taskList"></div>
+        </div>
+    </div>
+
+    <!-- 患者追加モーダル -->
+    <div class="modal" id="addPatientModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">新規患者登録</h3>
+                <button class="close-btn" id="closeAddPatient">×</button>
+            </div>
+            <form id="addPatientForm">
+                <div class="form-group">
+                    <label class="form-label">患者名</label>
+                    <input type="text" class="form-input" id="patientName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">患者ID</label>
+                    <input type="text" class="form-input" id="patientId" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">入院日</label>
+                    <input type="date" class="form-input" id="admissionDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">退院予定日（オプション）</label>
+                    <input type="date" class="form-input" id="dischargeDate">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">担当医師</label>
+                    <input type="text" class="form-input" id="doctorName" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">登録</button>
+                    <button type="button" class="btn btn-secondary" id="cancelAddPatient">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // データ構造
+        let patients = [
+            {
+                id: 'P001',
+                name: '山田 太郎',
+                admissionDate: '2025-02-08',
+                dischargeDate: '2025-02-15',
+                doctor: '田中医師',
+                documents: {
+                    '緊急テンプレート': 'completed',
+                    'DPC入力': 'completed',
+                    '診断書': 'in-progress',
+                    '診療情報提供書': 'pending',
+                    '退院サマリ': 'pending',
+                    'DPC再確認': 'pending'
+                }
+            },
+            {
+                id: 'P002',
+                name: '佐藤 花子',
+                admissionDate: '2025-02-10',
+                dischargeDate: '2025-02-17',
+                doctor: '田中医師',
+                documents: {
+                    '緊急テンプレート': 'completed',
+                    'DPC入力': 'in-progress',
+                    '診断書': 'pending',
+                    '診療情報提供書': 'pending',
+                    '退院サマリ': 'pending',
+                    'DPC再確認': 'pending'
+                }
+            },
+            {
+                id: 'P003',
+                name: '鈴木 一郎',
+                admissionDate: '2025-02-05',
+                dischargeDate: '2025-02-12',
+                doctor: '山本医師',
+                documents: {
+                    '緊急テンプレート': 'completed',
+                    'DPC入力': 'completed',
+                    '診断書': 'completed',
+                    '診療情報提供書': 'in-progress',
+                    '退院サマリ': 'pending',
+                    'DPC再確認': 'pending'
+                }
+            },
+            {
+                id: 'P004',
+                name: '高橋 美咲',
+                admissionDate: '2025-02-11',
+                dischargeDate: null,
+                doctor: '田中医師',
+                documents: {
+                    '緊急テンプレート': 'in-progress',
+                    'DPC入力': 'pending',
+                    '診断書': 'pending',
+                    '診療情報提供書': 'pending',
+                    '退院サマリ': 'pending',
+                    'DPC再確認': 'pending'
+                }
+            },
+            {
+                id: 'P005',
+                name: '伊藤 健太',
+                admissionDate: '2025-02-09',
+                dischargeDate: '2025-02-16',
+                doctor: '山本医師',
+                documents: {
+                    '緊急テンプレート': 'completed',
+                    'DPC入力': 'completed',
+                    '診断書': 'in-progress',
+                    '診療情報提供書': 'pending',
+                    '退院サマリ': 'pending',
+                    'DPC再確認': 'in-progress'
+                }
+            }
+        ];
+
+        let currentRole = 'doctor';
+        const today = new Date(2025, 1, 11); // 2025年2月11日
+        
+        // 表示期間の計算（先週日曜日から3週間後まで）
+        function getCalendarStartDate() {
+            const startDate = new Date(today);
+            // 先週の日曜日を求める（今日の曜日 + 7日前に戻って、そこから日曜日を探す）
+            const dayOfWeek = startDate.getDay();
+            const daysToLastSunday = dayOfWeek + 7;
+            startDate.setDate(startDate.getDate() - daysToLastSunday);
+            return startDate;
+        }
+        
+        function getCalendarEndDate() {
+            const endDate = new Date(today);
+            // 3週間後の土曜日
+            const dayOfWeek = endDate.getDay();
+            const daysToThirdSaturday = (6 - dayOfWeek) + 21;
+            endDate.setDate(endDate.getDate() + daysToThirdSaturday);
+            return endDate;
+        }
+
+        // 役割ごとの担当書類を定義
+        const roleDocuments = {
+            'doctor': ['緊急テンプレート', 'DPC入力', '診断書', '診療情報提供書', '退院サマリ', 'DPC再確認'],
+            'medical-assistant': ['診断書', '診療情報提供書', '退院サマリ'],
+            'nursing-director': ['緊急テンプレート'],
+            'medical-affairs': ['緊急テンプレート'],
+            'medical-information': ['DPC入力', 'DPC再確認']
+        };
+
+        // 役割が複数の医師を見るかどうか
+        const roleViewsMultipleDoctors = {
+            'doctor': false,
+            'medical-assistant': true,
+            'nursing-director': true,
+            'medical-affairs': true,
+            'medical-information': true
+        };
+
+        // 日付計算関数
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
+        function formatDate(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function parseDate(dateStr) {
+            return new Date(dateStr);
+        }
+
+        // 書類の期限を計算
+        function getDeadlines(patient) {
+            const admissionDate = parseDate(patient.admissionDate);
+            const dischargeDate = patient.dischargeDate ? parseDate(patient.dischargeDate) : null;
+            
+            const deadlines = {};
+            
+            // 緊急テンプレート: 入院後24時間以内
+            deadlines['緊急テンプレート'] = formatDate(addDays(admissionDate, 1));
+            
+            // DPC入力: 入院後7日以内
+            deadlines['DPC入力'] = formatDate(addDays(admissionDate, 7));
+            
+            if (dischargeDate) {
+                // 診断書: 退院日まで（診療情報提供書と同じタイミング）
+                deadlines['診断書'] = formatDate(dischargeDate);
+                
+                // 診療情報提供書: 退院日の朝まで
+                deadlines['診療情報提供書'] = formatDate(dischargeDate);
+                
+                // 退院サマリ: 退院後3日以内
+                deadlines['退院サマリ'] = formatDate(addDays(dischargeDate, 3));
+                
+                // DPC再確認: 退院前（退院日の前日まで）
+                deadlines['DPC再確認'] = formatDate(addDays(dischargeDate, -1));
+            }
+            
+            return deadlines;
+        }
+
+        // タスクを日付ごとに整理
+        function getTasksByDate() {
+            const tasksByDate = {};
+            
+            // 役割に応じて患者をフィルタリング
+            let relevantPatients = patients;
+            if (currentRole === 'doctor') {
+                // 医師は自分の担当患者のみ（ここでは田中医師として表示）
+                relevantPatients = patients.filter(p => p.doctor === '田中医師');
+            }
+            // その他の役割は全患者を表示
+            
+            // 役割に応じた担当書類を取得
+            const allowedDocuments = roleDocuments[currentRole] || [];
+            
+            relevantPatients.forEach(patient => {
+                const deadlines = getDeadlines(patient);
+                
+                Object.entries(deadlines).forEach(([docType, deadline]) => {
+                    // この役割が担当する書類かチェック
+                    if (!allowedDocuments.includes(docType)) {
+                        return;
+                    }
+                    
+                    if (patient.documents[docType] !== 'completed') {
+                        if (!tasksByDate[deadline]) {
+                            tasksByDate[deadline] = [];
+                        }
+                        
+                        tasksByDate[deadline].push({
+                            patient: patient,
+                            type: docType,
+                            deadline: deadline,
+                            status: patient.documents[docType]
+                        });
+                    }
+                });
+            });
+            
+            return tasksByDate;
+        }
+
+        // カレンダーの描画
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const title = document.getElementById('calendarTitle');
+            
+            const startDate = getCalendarStartDate();
+            const endDate = getCalendarEndDate();
+            
+            // タイトルを期間表示に変更
+            const startMonth = startDate.getMonth() + 1;
+            const startDay = startDate.getDate();
+            const endMonth = endDate.getMonth() + 1;
+            const endDay = endDate.getDate();
+            title.textContent = `${startDate.getFullYear()}年${startMonth}月${startDay}日 〜 ${endMonth}月${endDay}日`;
+            
+            const tasksByDate = getTasksByDate();
+            
+            let html = '';
+            
+            // 曜日ヘッダー
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            dayNames.forEach(day => {
+                html += `<div class="calendar-day-header">${day}</div>`;
+            });
+            
+            // カレンダーの日付を生成
+            const currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const dateStr = formatDate(currentDate);
+                const tasks = tasksByDate[dateStr] || [];
+                const isToday = dateStr === formatDate(today);
+                const isPast = currentDate < today && !isToday;
+                
+                const taskCount = tasks.length;
+                
+                // 複数の医師を見る役割の場合は、患者名+医師名を表示
+                const showDoctorName = roleViewsMultipleDoctors[currentRole];
+                
+                const taskBadges = tasks.slice(0, 3).map(task => {
+                    let badgeClass = 'task-badge ';
+                    if (task.type === '緊急テンプレート') badgeClass += 'task-emergency';
+                    else if (task.type === '退院サマリ') badgeClass += 'task-discharge-summary';
+                    else if (task.type === '診療情報提供書') badgeClass += 'task-referral';
+                    else if (task.type === 'DPC入力') badgeClass += 'task-dpc';
+                    else if (task.type === 'DPC再確認') badgeClass += 'task-dpc-confirm';
+                    else if (task.type === '診断書') badgeClass += 'task-referral';
+                    
+                    const displayName = showDoctorName ? 
+                        `${task.patient.name.split(' ')[0]}(${task.patient.doctor.replace('医師', '')})` :
+                        task.patient.name.split(' ')[0];
+                    
+                    return `<div class="${badgeClass}">${displayName}</div>`;
+                }).join('');
+                
+                const dayOfMonth = currentDate.getDate();
+                const month = currentDate.getMonth() + 1;
+                
+                html += `
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${isPast ? 'past-day' : ''}" onclick="showDayDetail('${dateStr}')">
+                        <div class="day-number">${month}/${dayOfMonth}</div>
+                        ${taskCount > 0 ? `<div class="task-count">${taskCount}</div>` : ''}
+                        <div class="day-tasks">${taskBadges}</div>
+                    </div>
+                `;
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            grid.innerHTML = html;
+        }
+
+        // 日付詳細モーダルを表示
+        function showDayDetail(dateStr) {
+            const tasksByDate = getTasksByDate();
+            const tasks = tasksByDate[dateStr] || [];
+            
+            if (tasks.length === 0) return;
+            
+            const modal = document.getElementById('dayDetailModal');
+            const title = document.getElementById('modalTitle');
+            const taskList = document.getElementById('taskList');
+            
+            const date = parseDate(dateStr);
+            title.textContent = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日の書類（${tasks.length}件）`;
+            
+            const taskDateObj = new Date(dateStr);
+            const isOverdue = taskDateObj < today;
+            
+            // 複数の医師を見る役割かどうか
+            const showDoctorName = roleViewsMultipleDoctors[currentRole];
+            
+            taskList.innerHTML = tasks.map(task => {
+                const statusText = task.status === 'pending' ? '未着手' : 
+                                 task.status === 'in-progress' ? '作成中' : '完了';
+                const statusClass = `status-${task.status}`;
+                
+                return `
+                    <div class="task-item ${isOverdue ? 'overdue' : ''}">
+                        <div class="task-header">
+                            <div>
+                                <div class="task-patient">${task.patient.name} (${task.patient.id})${showDoctorName ? ` - 担当: ${task.patient.doctor}` : ''}</div>
+                                <div class="task-type">${task.type}</div>
+                                <div class="task-deadline ${isOverdue ? 'urgent' : ''}">
+                                    期限: ${task.deadline} ${isOverdue ? '⚠️ 期限超過' : ''}
+                                </div>
+                                <div class="task-info">入院日: ${task.patient.admissionDate}</div>
+                                ${task.patient.dischargeDate ? `<div class="task-info">退院予定: ${task.patient.dischargeDate}</div>` : ''}
+                            </div>
+                            <button class="status-toggle ${statusClass}" 
+                                    onclick="toggleTaskStatus('${task.patient.id}', '${task.type}')">
+                                ${statusText}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            modal.classList.add('show');
+        }
+
+        // タスクステータスの切り替え
+        function toggleTaskStatus(patientId, docType) {
+            const patient = patients.find(p => p.id === patientId);
+            if (!patient) return;
+            
+            const statuses = ['pending', 'in-progress', 'completed'];
+            const currentStatus = patient.documents[docType];
+            const currentIndex = statuses.indexOf(currentStatus);
+            const nextIndex = (currentIndex + 1) % statuses.length;
+            
+            patient.documents[docType] = statuses[nextIndex];
+            
+            // データを保存
+            saveData();
+            
+            // 現在のモーダルの日付を取得して再表示
+            const modalTitle = document.getElementById('modalTitle').textContent;
+            const dateMatch = modalTitle.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+            if (dateMatch) {
+                const year = dateMatch[1];
+                const month = String(dateMatch[2]).padStart(2, '0');
+                const day = String(dateMatch[3]).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+                
+                renderCalendar();
+                showDayDetail(dateStr);
+            }
+        }
+
+        // イベントリスナー
+        document.getElementById('roleSelector').addEventListener('click', (e) => {
+            if (e.target.classList.contains('role-btn')) {
+                document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                currentRole = e.target.dataset.role;
+                renderCalendar();
+            }
+        });
+
+        document.getElementById('closeDayDetail').addEventListener('click', () => {
+            document.getElementById('dayDetailModal').classList.remove('show');
+        });
+
+        document.getElementById('addPatientBtn').addEventListener('click', () => {
+            document.getElementById('addPatientModal').classList.add('show');
+            document.getElementById('addPatientForm').reset();
+            document.getElementById('admissionDate').valueAsDate = new Date();
+        });
+
+        document.getElementById('closeAddPatient').addEventListener('click', () => {
+            document.getElementById('addPatientModal').classList.remove('show');
+        });
+
+        document.getElementById('cancelAddPatient').addEventListener('click', () => {
+            document.getElementById('addPatientModal').classList.remove('show');
+        });
+
+        document.getElementById('addPatientModal').addEventListener('click', (e) => {
+            if (e.target.id === 'addPatientModal') {
+                document.getElementById('addPatientModal').classList.remove('show');
+            }
+        });
+
+        document.getElementById('dayDetailModal').addEventListener('click', (e) => {
+            if (e.target.id === 'dayDetailModal') {
+                document.getElementById('dayDetailModal').classList.remove('show');
+            }
+        });
+
+        document.getElementById('addPatientForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const newPatient = {
+                id: document.getElementById('patientId').value,
+                name: document.getElementById('patientName').value,
+                admissionDate: document.getElementById('admissionDate').value,
+                dischargeDate: document.getElementById('dischargeDate').value || null,
+                doctor: document.getElementById('doctorName').value,
+                documents: {
+                    '緊急テンプレート': 'pending',
+                    'DPC入力': 'pending',
+                    '診断書': 'pending',
+                    '診療情報提供書': 'pending',
+                    '退院サマリ': 'pending',
+                    'DPC再確認': 'pending'
+                }
+            };
+            
+            patients.push(newPatient);
+            
+            // データを保存
+            saveData();
+            
+            document.getElementById('addPatientModal').classList.remove('show');
+            renderCalendar();
+        });
+
+        // データの永続化（localStorage）
+        function saveData() {
+            try {
+                localStorage.setItem('hospital-patients', JSON.stringify(patients));
+                localStorage.setItem('hospital-last-save', new Date().toISOString());
+            } catch (e) {
+                console.log('データ保存に失敗しました');
+            }
+        }
+
+        function loadData() {
+            try {
+                const saved = localStorage.getItem('hospital-patients');
+                if (saved) {
+                    patients = JSON.parse(saved);
+                    console.log('保存データを読み込みました');
+                }
+            } catch (e) {
+                console.log('データ読み込みに失敗しました');
+            }
+        }
+
+        // データ読み込み
+        loadData();
+
+        // 初期表示
+        renderCalendar();
+    </script>
+</body>
+</html>
